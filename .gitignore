@@ -10,6 +10,7 @@ frontend/.eslintcache
 
 # ── Environment & Secrets ────────────────────────────────────────────────
 .env
+.env.example
 .env.local
 .env.*.local
 
