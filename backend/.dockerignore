@@ -1,0 +1,6 @@
+target
+.mvn
+*.jar
+*.log
+.dockerignore
+Dockerfile

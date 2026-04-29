@@ -1,0 +1,192 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   GridWar — Global Styles
+   Design tokens as CSS custom properties on :root (FRONTEND_SPEC §1)
+   NEVER hardcode color values in JSX or Tailwind classes — use these vars.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Fonts: @import must precede @tailwind directives ───────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design Tokens ───────────────────────────────────────────────────── */
+:root {
+  --bg:         #0d0d1a;
+  --surface:    #1a1a2e;
+  --accent:     #6c63ff;
+  --accent2:    #00d4aa;
+  --text:       #e8e8f0;
+  --muted:      #8888aa;
+  --border:     #2a2a4a;
+  --tile-empty: #1e1e3a;
+  --tile-size:  14px;
+  --tile-gap:   1px;
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --font-mono:  "JetBrains Mono", monospace;
+  --font-sans:  "Inter", sans-serif;
+}
+
+/* ── Base Reset ───────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── App Grid Layout (FRONTEND_SPEC §2) ──────────────────────────────── */
+#root {
+  display: grid;
+  grid-template-areas: "header header" "grid sidebar";
+  grid-template-columns: 1fr 280px;
+  grid-template-rows: 56px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Mobile breakpoints (FRONTEND_SPEC §8) ───────────────────────────── */
+/* < 480px — sidebar hidden, FAB opens it. Grid full screen. */
+@media (max-width: 479px) {
+  #root {
+    grid-template-areas: "header" "grid";
+    grid-template-columns: 1fr;
+    grid-template-rows: 56px 1fr;
+  }
+}
+
+/* 480–767px — sidebar as bottom sheet (40% height) */
+@media (min-width: 480px) and (max-width: 767px) {
+  #root {
+    grid-template-areas: "header" "grid" "sidebar";
+    grid-template-columns: 1fr;
+    grid-template-rows: 56px 1fr 40vh;
+  }
+}
+
+/* ── Tile Styles (FRONTEND_SPEC §3.4) ────────────────────────────────── */
+.tile {
+  width: var(--tile-size);
+  height: var(--tile-size);
+  background: var(--tile-bg, var(--tile-empty));
+  border-radius: 1px;
+  cursor: pointer;
+  transition: filter 80ms ease, transform 80ms ease;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  user-select: none;
+  outline: none;
+}
+
+.tile:hover {
+  filter: brightness(1.35);
+  transform: scale(1.15);
+  z-index: 1;
+}
+
+.tile:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+  z-index: 2;
+}
+
+.tile--mine {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.tile--flash {
+  animation: capture-flash 300ms ease-out forwards;
+}
+
+@keyframes capture-flash {
+  0%   { filter: brightness(3); transform: scale(1.3); }
+  100% { filter: brightness(1); transform: scale(1); }
+}
+
+/* ── Tile Tooltip ──────────────────────────────────────────────────────── */
+.tile-tooltip {
+  position: fixed;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text);
+  pointer-events: none;
+  z-index: 100;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Scrollbar Styling ────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* ── Utility Classes ─────────────────────────────────────────────────── */
+.font-mono { font-family: var(--font-mono); }
+.font-sans  { font-family: var(--font-sans); }
+
+/* ── Mobile: FAB visible only on < 480px ────────────────────────────── */
+@media (max-width: 479px) {
+  #gw-sidebar-fab {
+    display: flex !important;
+  }
+  #gw-sidebar {
+    display: none;
+  }
+  #gw-sidebar.open {
+    display: flex;
+    position: fixed;
+    inset: auto 0 0 0;
+    height: 60vh;
+    z-index: 300;
+    border-top: 1px solid var(--border);
+    border-left: none;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+  }
+}
+
+/* 480–767px: sidebar as bottom sheet */
+@media (min-width: 480px) and (max-width: 767px) {
+  #gw-sidebar {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* ── Pulse keyframe (online count dot) ───────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}

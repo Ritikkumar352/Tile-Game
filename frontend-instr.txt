@@ -1,0 +1,243 @@
+**GRIDWAR**
+
+Frontend Specification
+
+_React 18 + Vite + STOMP - companion to MASTER_INSTRUCTIONS.docx_
+
+# **1\. Design Tokens (CSS Custom Properties)**
+
+Defined on :root in index.css. Never hardcode these values in components.
+
+:root {
+
+\--bg: #0d0d1a;
+
+\--surface: #1a1a2e;
+
+\--accent: #6c63ff;
+
+\--accent2: #00d4aa;
+
+\--text: #e8e8f0;
+
+\--muted: #8888aa;
+
+\--border: #2a2a4a;
+
+\--tile-empty: #1e1e3a;
+
+\--tile-size: 14px;
+
+\--tile-gap: 1px;
+
+\--radius-sm: 4px;
+
+\--radius-md: 8px;
+
+\--font-mono: "JetBrains Mono", monospace;
+
+\--font-sans: "Inter", sans-serif;
+
+}
+
+_Import Inter + JetBrains Mono from Google Fonts in index.html - no local font files._
+
+# **2\. App Layout**
+
+/\* body \*/
+
+display: grid;
+
+grid-template-areas: "header header" "grid sidebar";
+
+grid-template-columns: 1fr 280px;
+
+grid-template-rows: 56px 1fr;
+
+height: 100vh; overflow: hidden;
+
+Mobile < 768px: sidebar becomes a bottom drawer. Grid takes full width.
+
+# **3\. Component Specifications**
+
+## **3.1 JoinModal**
+
+- Shown on first visit (no session). Backdrop blocks rest of UI.
+- Username input: max 24 chars, only \[a-zA-Z0-9\_\], min 3 chars to enable submit
+- Color picker: 12 preset swatches - #6c63ff #ff6584 #00d4aa #ffd166 #06d6a0 #ef476f #118ab2 #073b4c #f8961e #90be6d #577590 #f94144
+- On submit: POST /api/users → 200 closes modal + triggers STOMP connect
+- 409 response: show inline "Username taken" error
+- Animation: opacity 0→1, scale 0.9→1, 200ms ease-out
+
+**Modal cannot be closed by clicking the backdrop. User must submit a valid username.**
+
+## **3.2 Header (56px)**
+
+- Left: "GridWar" in --accent, font-weight 800, 22px
+- Center: green dot + "N online" (updates via STOMP /topic/online)
+- Right: color swatch + username + connection dot (green/yellow/red)
+
+## **3.3 Grid Component**
+
+- Uses @tanstack/react-virtual - NEVER mount all 2,500 tiles
+- overscan: 5 rows + 5 cols
+- Outer container: overflow auto, touch-action none
+- Inner: position relative, exact pixel dimensions (50 \* (14+1))
+- Zoom: CSS transform scale 0.5-4.0 step 0.25, mouse wheel
+- Pan: translate3d on inner container, drag + touch
+- transform-origin: 0 0 - calculate offsets manually
+- Mini-map: 100×100 canvas bottom-right corner showing claimed ratio
+
+## **3.4 Tile Component**
+
+.tile {
+
+width: var(--tile-size); height: var(--tile-size);
+
+background: var(--tile-bg, var(--tile-empty));
+
+border-radius: 1px; cursor: pointer;
+
+transition: filter 80ms ease, transform 80ms ease;
+
+position: absolute;
+
+}
+
+.tile:hover { filter: brightness(1.35); transform: scale(1.15); z-index:1; }
+
+.tile--mine { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4); }
+
+@keyframes capture-flash {
+
+0% { filter: brightness(3); transform: scale(1.3); }
+
+100% { filter: brightness(1); transform: scale(1); }
+
+}
+
+- Owner initial (1 char) shown only at zoom ≥ 2
+- Hover tooltip: owner name + "2m ago" - appears after 300ms hover, above tile
+- Accessibility: role="button", responds to Enter/Space, aria-label="Tile row col"
+
+## **3.5 Leaderboard**
+
+- Top 10 by tiles owned - live via /topic/leaderboard
+- Each row: rank, color swatch, username, count
+- Current user row: left border in --accent
+- Rank change animation: useTransition from react-spring (vertical slide)
+- Below: stat row - total tiles, claimed %, your tile count
+
+## **3.6 Cooldown Ring**
+
+- SVG circle follows cursor, position: fixed, pointer-events: none
+- Stroke animates 0→100% over CAPTURE_COOLDOWN_MS ms
+- Color: --accent2, stroke-width 3px, radius 18px
+- Failed capture: ring flashes red + toast "Wait Xs" (auto-dismiss 1.5s)
+
+# **4\. Zustand Store (Exact Shape)**
+
+create((set) => ({
+
+tiles: {}, // Record&lt;number, TileDto&gt;
+
+gridSize: 50,
+
+player: null, // UserDto | null
+
+cooldownUntil:null, // ms timestamp | null
+
+onlineCount: 0,
+
+leaderboard: \[\],
+
+stompStatus: "disconnected", // "connected"|"reconnecting"|"disconnected"
+
+setTile: (t) => set(s=>({tiles:{...s.tiles,\[t.id\]:t}})),
+
+setGrid: (arr)=> set({tiles:Object.fromEntries(arr.map(t=>\[t.id,t\]))}),
+
+setOnlineCount: (n) => set({onlineCount:n}),
+
+setLeaderboard: (lb) => set({leaderboard:lb}),
+
+setStompStatus: (s) => set({stompStatus:s}),
+
+setCooldown: (ms) => set({cooldownUntil:Date.now()+ms}),
+
+}))
+
+# **5\. useStomp Hook**
+
+Lives in hooks/useStomp.js. Manages the full STOMP lifecycle.
+
+import { Client } from "@stomp/stompjs"
+
+import SockJS from "sockjs-client"
+
+export function useStomp() {
+
+// 1. Create Client with webSocketFactory: ()=>new SockJS("/ws")
+
+// 2. reconnectDelay: exponential backoff 1s→2s→4s→8s→16s cap 30s
+
+// 3. onConnect: setStompStatus("connected")
+
+// subscribe /topic/tiles → setTile(msg.payload.tile)
+
+// subscribe /topic/online → setOnlineCount(msg.payload.count)
+
+// subscribe /topic/leaderboard→ setLeaderboard(msg.payload.leaderboard)
+
+// subscribe /user/queue/errors→ handle COOLDOWN/ERROR
+
+// 4. onDisconnect: setStompStatus("reconnecting")
+
+// 5. client.activate() on mount, client.deactivate() on unmount
+
+}
+
+_Store the STOMP Client in a ref - never in React state. Reconnect happens inside the Client automatically._
+
+# **6\. Performance Targets**
+
+| **Metric**                            | **Target**                                           |
+| ------------------------------------- | ---------------------------------------------------- |
+| Initial load (grid visible)           | < 2s on 3G                                           |
+| Tile update latency (STOMP → repaint) | < 150ms                                              |
+| DOM nodes in viewport                 | < 500 at any zoom                                    |
+| JS bundle (gzipped)                   | < 160 KB                                             |
+| Lighthouse Performance                | ≥ 80                                                 |
+| Scroll / pan / zoom                   | 60fps - use will-change: transform on grid container |
+
+# **7\. vite.config.js (Required)**
+
+export default defineConfig({
+
+plugins: \[react()\],
+
+server: {
+
+proxy: {
+
+"/api": "<http://localhost:8080>",
+
+"/ws": { target:"<http://localhost:8080>", ws:true },
+
+}
+
+},
+
+build: { outDir: "dist" }
+
+})
+
+_The proxy means the frontend always calls relative paths (/api, /ws). No CORS issues in dev._
+
+# **8\. Mobile Breakpoints**
+
+| **Breakpoint** | **Behaviour**                                   |
+| -------------- | ----------------------------------------------- |
+| < 480px        | Sidebar hidden, FAB opens it. Grid full screen. |
+| 480-768px      | Sidebar bottom sheet 40% height, grid above.    |
+| \> 768px       | Default: sidebar 280px right, grid fills rest.  |
