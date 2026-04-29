@@ -31,8 +31,6 @@ frontend/.eslintcache
 .DS_Store
 Thumbs.db
 
-# ── Project Specific ─────────────────────────────────────────────────────
-!backend_spec.txt
-!frontend-instr.txt
-!master-instruct.txt
-!CONTINUE_HERE.md
+# ── Documentation ────────────────────────────────────────────────────────
+*.md
+!README.md
