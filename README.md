@@ -1,4 +1,4 @@
-# GridWar — Real-Time Shared Tile Capture Game
+# GridWar | Real-Time Shared Tile Capture Game
 
 GridWar is a fast-paced, real-time multiplayer experiment where users compete to dominate a shared grid. Built to explore the challenges of synchronization and high-concurrency state management, it offers a seamless experience where every click is instantly visible to everyone else.
 
