@@ -180,7 +180,7 @@ I love building real-time applications and exploring the intersection of backend
 
 ## 📸 Screenshots
 
-*(Add your screenshots here to make the README even more impactful!)*
+
 
 <p align="center">
   <img src="https://via.placeholder.com/800x450?text=GridWar+Gameplay+Screenshot" alt="GridWar Gameplay" width="800">
